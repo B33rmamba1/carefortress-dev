@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="CareFortress — open-source KVM hypervisor security layer for legacy medical devices. Ransomware containment, audit chain integrity, and protocol proxying for unpatchable clinical equipment.">
+<title>CareFortress — Defending Critical Care</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy:#0D3340;--teal:#1A7A8A;--teal-lt:#22A0B4;--fg:#E8F4F7;--fg2:#A8C8D0;
+    --fg3:#5A8A96;--bg:#060E12;--bg2:#0A1820;--bg3:#0F2030;--border:#1A3A4A;
+    --red:#C0392B;--mono:'JetBrains Mono','Fira Mono',monospace;--sans:system-ui,-apple-system,'Segoe UI',sans-serif;
+  }
+  html{scroll-behavior:smooth;}
+  body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased;}
+  nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:64px;background:rgba(6,14,18,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);}
+  .nav-logo{display:flex;align-items:center;text-decoration:none;}
+  .nav-logo img{height:36px;width:auto;filter:brightness(0) invert(1);}
+  .nav-fallback{display:flex;align-items:center;gap:10px;}
+  .nav-fallback span{font-size:15px;font-weight:700;color:var(--fg);letter-spacing:0.02em;}
+  .nav-fallback span em{color:var(--teal);font-style:normal;}
+  nav ul{display:flex;gap:32px;list-style:none;align-items:center;}
+  nav a{color:var(--fg2);text-decoration:none;font-size:13px;letter-spacing:0.04em;transition:color 0.2s;}
+  nav a:hover{color:var(--teal-lt);}
+  .nav-cta{background:var(--teal)!important;color:white!important;padding:8px 18px;border-radius:4px;font-weight:600;}
+  .nav-cta:hover{background:var(--teal-lt)!important;}
+  .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 48px 80px;position:relative;overflow:hidden;}
+  .hero::before{content:'';position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(circle,rgba(26,122,138,0.10) 0%,transparent 70%);pointer-events:none;}
+  .hero-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;color:var(--teal);text-transform:uppercase;margin-bottom:32px;display:flex;align-items:center;gap:12px;}
+  .hero-eyebrow::before,.hero-eyebrow::after{content:'';display:block;width:40px;height:1px;background:var(--teal);opacity:0.5;}
+  .hero-logo{margin-bottom:44px;}
+  .hero-logo img{height:110px;width:auto;filter:brightness(0) invert(1);}
+  .hero-logo-fallback{display:flex;align-items:center;justify-content:center;gap:24px;}
+  h1{font-size:clamp(36px,5vw,64px);font-weight:800;line-height:1.1;letter-spacing:-0.02em;margin-bottom:8px;color:var(--fg);}
+  h1 .teal{color:var(--teal);}
+  .hero-sub{font-size:clamp(14px,2vw,18px);color:var(--fg2);max-width:620px;margin:24px auto 48px;line-height:1.6;}
+  .hero-actions{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;}
+  .btn-primary{background:var(--teal);color:white;padding:14px 28px;border-radius:4px;text-decoration:none;font-weight:600;font-size:14px;transition:background 0.2s,transform 0.15s;}
+  .btn-primary:hover{background:var(--teal-lt);transform:translateY(-1px);}
+  .btn-secondary{background:transparent;color:var(--fg2);padding:14px 28px;border-radius:4px;text-decoration:none;font-weight:500;font-size:14px;border:1px solid var(--border);transition:border-color 0.2s,color 0.2s;}
+  .btn-secondary:hover{border-color:var(--teal);color:var(--teal-lt);}
+  .hero-stats{display:flex;gap:48px;margin-top:72px;padding-top:48px;border-top:1px solid var(--border);flex-wrap:wrap;justify-content:center;}
+  .stat{text-align:center;}
+  .stat-value{font-family:var(--mono);font-size:28px;font-weight:700;color:var(--teal);display:block;}
+  .stat-label{font-size:11px;color:var(--fg3);letter-spacing:0.08em;text-transform:uppercase;}
+  section{padding:100px 48px;max-width:1100px;margin:0 auto;}
+  .section-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.16em;color:var(--teal);text-transform:uppercase;margin-bottom:16px;}
+  h2{font-size:clamp(32px,4vw,52px);font-weight:700;line-height:1.15;letter-spacing:-0.02em;margin-bottom:20px;color:var(--fg);}
+  .section-intro{font-size:17px;color:var(--fg2);max-width:680px;line-height:1.7;margin-bottom:56px;}
+  .problem-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .problem-card{background:var(--bg2);padding:36px 32px;}
+  .problem-card-icon{width:36px;height:36px;margin-bottom:18px;color:var(--teal);}
+  .problem-card h3{font-size:16px;font-weight:600;color:var(--fg);margin-bottom:10px;}
+  .problem-card p{font-size:14px;color:var(--fg2);line-height:1.65;}
+  .problem-card.highlight{background:var(--bg3);border-left:3px solid var(--red);}
+  .problem-card.highlight h3{color:#E57373;}
+  .architecture{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:40px 48px;margin-bottom:48px;overflow-x:auto;}
+  .arch-layer{display:grid;grid-template-columns:160px 24px 260px 1fr;align-items:center;gap:16px;padding:18px 0;border-bottom:1px solid var(--border);}
+  .arch-layer:last-child{border-bottom:none;}
+  .arch-label{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--fg3);}
+  .arch-arrow{color:var(--teal);opacity:0.6;font-family:var(--mono);font-size:14px;}
+  .arch-name{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--fg);}
+  .arch-name.teal{color:var(--teal-lt);}
+  .arch-name.muted{color:var(--fg3);}
+  .arch-desc{font-size:13px;color:var(--fg2);line-height:1.5;}
+  .callout{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:8px;padding:32px 36px;margin:48px 0;}
+  .callout-label{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;color:var(--teal);text-transform:uppercase;margin-bottom:12px;}
+  .callout p{font-size:18px;font-weight:600;color:var(--fg);line-height:1.5;}
+  .features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;}
+  .feature-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:32px;transition:border-color 0.2s;}
+  .feature-card:hover{border-color:var(--teal);}
+  .feature-card h3{font-size:16px;font-weight:600;color:var(--fg);margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+  .feature-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0;}
+  .feature-card p{font-size:14px;color:var(--fg2);line-height:1.65;}
+  .siem-platforms{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;}
+  .siem-tag{font-family:var(--mono);font-size:10px;letter-spacing:0.06em;padding:3px 10px;border-radius:3px;border:1px solid var(--teal);color:var(--teal);white-space:nowrap;}
+  .security-section{background:var(--bg2);width:100%;}
+  .security-section-inner{max-width:1100px;margin:0 auto;padding:100px 48px;}
+  .badges{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:56px;}
+  .badge{font-family:var(--mono);font-size:11px;letter-spacing:0.06em;padding:6px 14px;border-radius:4px;border:1px solid #2E7D52;color:#4CAF82;display:flex;align-items:center;gap:6px;}
+  .badge::before{content:'✓';font-weight:700;}
+  .security-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;}
+  .security-item{padding:28px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;transition:border-color 0.2s;}
+  .security-item:hover{border-color:var(--teal);}
+  .security-item a{font-size:13px;font-weight:600;color:var(--teal-lt);font-family:var(--mono);text-decoration:none;display:block;margin-bottom:10px;transition:color 0.2s;}
+  .security-item a:hover{color:white;}
+  .security-item p{font-size:13px;color:var(--fg2);line-height:1.6;}
+  .code-block{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:24px 28px;font-family:var(--mono);font-size:13px;color:var(--fg2);margin-top:14px;overflow-x:auto;line-height:1.9;}
+  .code-block .comment{color:var(--fg3);}
+  .code-block .cmd{color:var(--teal-lt);}
+  .code-block .arg{color:var(--fg);}
+  .steps{display:flex;flex-direction:column;}
+  .step{display:flex;gap:28px;padding:32px 0;border-bottom:1px solid var(--border);}
+  .step:last-child{border-bottom:none;}
+  .step-num{font-family:var(--mono);font-size:11px;color:var(--teal);font-weight:700;min-width:28px;padding-top:3px;}
+  .step-content h3{font-size:16px;font-weight:600;color:var(--fg);margin-bottom:8px;}
+  .step-content p{font-size:14px;color:var(--fg2);}
+  .step-content code{font-family:var(--mono);font-size:12px;background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:3px;color:var(--teal-lt);}
+  footer{border-top:1px solid var(--border);padding:56px 48px 32px;max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:40px;}
+  .footer-brand h3{font-size:16px;font-weight:700;color:var(--fg);margin-bottom:10px;}
+  .footer-brand h3 span{color:var(--teal);}
+  .footer-brand p{font-size:13px;color:var(--fg3);max-width:300px;line-height:1.65;}
+  .footer-links{display:flex;gap:56px;flex-wrap:wrap;}
+  .footer-col h4{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:16px;font-weight:600;}
+  .footer-col ul{list-style:none;display:flex;flex-direction:column;gap:10px;}
+  .footer-col a{font-size:13px;color:var(--fg2);text-decoration:none;transition:color 0.2s;}
+  .footer-col a:hover{color:var(--teal-lt);}
+  .footer-bottom{border-top:1px solid var(--border);padding:20px 48px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+  .footer-bottom p{font-size:12px;color:var(--fg3);font-family:var(--mono);}
+  @media(max-width:768px){nav{padding:0 24px;}nav ul{display:none;}section{padding:64px 24px;}.hero{padding:100px 24px 64px;}.hero-stats{gap:32px;}.architecture{padding:24px;}.arch-layer{grid-template-columns:1fr;gap:4px;}footer{padding:48px 24px 32px;}.footer-bottom{padding:20px 24px;}}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">
+    <img src="assets/logo.png" alt="CareFortress"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="nav-fallback" style="display:none;">
+      <svg width="28" height="32" viewBox="0 0 48 52" fill="none">
+        <path d="M24 2L44 10V28C44 40 34 48 24 50C14 48 4 40 4 28V10L24 2Z" fill="#0D3340"/>
+        <path d="M24 8L38 14V28C38 37 31 43 24 45C17 43 10 37 10 28V14L24 8Z" fill="#1A7A8A"/>
+        <rect x="20" y="18" width="8" height="22" rx="2" fill="white"/>
+        <rect x="12" y="24" width="24" height="8" rx="2" fill="white"/>
+      </svg>
+      <span><em>CARE</em>FORTRESS</span>
+    </div>
+  </a>
+  <ul>
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#how-it-works">Architecture</a></li>
+    <li><a href="#security">Security</a></li>
+    <li><a href="#get-started">Get started</a></li>
+    <li><a href="https://github.com/B33rmamba1/carefortress-hv" class="nav-cta">GitHub →</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-eyebrow">Open-source medical device security</div>
+  <div class="hero-logo">
+    <img src="assets/logo.png" alt="CareFortress — Defending Critical Care"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="hero-logo-fallback" style="display:none;">
+      <svg width="90" height="104" viewBox="0 0 90 104" fill="none">
+        <path d="M45 3L83 18V54C83 78 67 92 45 100C23 92 7 78 7 54V18L45 3Z" fill="#0D3340"/>
+        <rect x="7" y="3" width="14" height="16" rx="2" fill="#0D3340"/>
+        <rect x="35" y="0" width="10" height="12" rx="2" fill="#0D3340"/>
+        <rect x="55" y="0" width="10" height="12" rx="2" fill="#0D3340"/>
+        <rect x="69" y="3" width="14" height="16" rx="2" fill="#0D3340"/>
+        <path d="M45 16L70 27V52C70 68 59 77 45 83C31 77 20 68 20 52V27L45 16Z" fill="#1A7A8A"/>
+        <rect x="39" y="34" width="12" height="36" rx="3" fill="white"/>
+        <rect x="25" y="46" width="40" height="12" rx="3" fill="white"/>
+      </svg>
+      <div style="text-align:left;">
+        <div style="font-size:42px;font-weight:700;color:#1A7A8A;line-height:1;font-family:system-ui;">CARE</div>
+        <div style="font-size:42px;font-weight:800;color:#E8F4F7;line-height:1;font-family:system-ui;">FORTRESS</div>
+        <div style="font-size:11px;font-weight:700;color:#5A8A96;letter-spacing:0.15em;margin-top:6px;font-family:system-ui;">DEFENDING CRITICAL CARE</div>
+      </div>
+    </div>
+  </div>
+  <h1>Legacy medical devices<br><span class="teal">deserve better protection</span></h1>
+  <p class="hero-sub">CareFortress wraps unpatchable clinical equipment — Windows XP, QNX, VxWorks — in a KVM hypervisor layer that contains ransomware, blocks lateral movement, and preserves a tamper-evident audit chain. Without touching the certified OS.</p>
+  <div class="hero-actions">
+    <a href="https://github.com/B33rmamba1/carefortress-hv" class="btn-primary">View on GitHub →</a>
+    <a href="#how-it-works" class="btn-secondary">See how it works</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-value">0</span><span class="stat-label">CVEs in dependencies</span></div>
+    <div class="stat"><span class="stat-value">10/10</span><span class="stat-label">OWASP categories pass</span></div>
+    <div class="stat"><span class="stat-value">SHA-256</span><span class="stat-label">Chained audit log</span></div>
+    <div class="stat"><span class="stat-value">GPG</span><span class="stat-label">All commits signed</span></div>
+  </div>
+</section>
+
+<section id="problem">
+  <div class="section-eyebrow">The problem</div>
+  <h2>Ransomware doesn't care if your device is FDA-certified</h2>
+  <p class="section-intro">Hospital ransomware attacks have diverted ambulances, delayed surgeries, and cost lives. Legacy medical devices are among the most vulnerable endpoints in any facility — and the hardest to protect.</p>
+  <div class="problem-grid">
+    <div class="problem-card highlight">
+      <svg class="problem-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+      <h3>Unpatchable by design</h3>
+      <p>FDA-cleared devices cannot receive OS updates without re-certification. A Windows XP ventilator controller from 2012 will run Windows XP until it's decommissioned.</p>
+    </div>
+    <div class="problem-card">
+      <svg class="problem-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+      <h3>Lateral movement amplifier</h3>
+      <p>WannaCry spread device-to-device over SMB in minutes. A single compromised patient monitor can reach every device on the same network segment.</p>
+    </div>
+    <div class="problem-card">
+      <svg class="problem-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+      <h3>No audit trail</h3>
+      <p>When a device is compromised, the attacker clears the logs. Standard network segmentation has no visibility into what happened inside the device.</p>
+    </div>
+    <div class="problem-card">
+      <svg class="problem-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <h3>Recovery takes days</h3>
+      <p>Restoring a ransomed medical device requires a field service visit, hardware replacement, or vendor re-imaging — measured in days, not minutes.</p>
+    </div>
+  </div>
+</section>
+
+<section id="how-it-works">
+  <div class="section-eyebrow">Architecture</div>
+  <h2>The hypervisor layer that ransomware can't cross</h2>
+  <p class="section-intro">CareFortress runs on dedicated edge hardware beside the legacy device. The certified OS runs unmodified inside a KVM guest VM — isolated, monitored, and recoverable.</p>
+  <div class="architecture">
+    <div class="arch-layer">
+      <span class="arch-label">Hospital network</span>
+      <span class="arch-arrow">→</span>
+      <span class="arch-name muted">HL7 / DICOM traffic</span>
+      <span class="arch-desc">All protocol traffic enters through content-inspecting proxies only</span>
+    </div>
+    <div class="arch-layer">
+      <span class="arch-label">Proxy layer</span>
+      <span class="arch-arrow">→</span>
+      <span class="arch-name teal">HL7 proxy · DICOM proxy</span>
+      <span class="arch-desc">Whitelist-only message types — worm propagation cannot pass through</span>
+    </div>
+    <div class="arch-layer">
+      <span class="arch-label">CareFortress host</span>
+      <span class="arch-arrow">→</span>
+      <span class="arch-name teal">KVM hypervisor · Audit chain · SIEM forwarder</span>
+      <span class="arch-desc">Isolated bridges · AppArmor · SHA-256 chained log · snapshot recovery</span>
+    </div>
+    <div class="arch-layer">
+      <span class="arch-label">Guest VM</span>
+      <span class="arch-arrow">→</span>
+      <span class="arch-name muted">Legacy device OS</span>
+      <span class="arch-desc">Windows XP / QNX / VxWorks — runs unmodified, certified software intact</span>
+    </div>
+  </div>
+  <div class="callout">
+    <div class="callout-label">Core thesis</div>
+    <p>CareFortress converts ransomware against the medical device fleet from a fleet-wide, persistent, stealthy, catastrophic event into a single-device, recoverable, detected, contained one.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card">
+      <h3><span class="feature-dot"></span>Lateral movement — blocked</h3>
+      <p>Isolated network bridges with deny-all routing between guest VMs. A compromised device has no route to its neighbors. Validated empirically from a guest-vantage attack simulation.</p>
+    </div>
+    <div class="feature-card">
+      <h3><span class="feature-dot"></span>Audit chain — tamper-evident</h3>
+      <p>Logs collected out-of-guest over virtio-serial. SHA-256 chained. Append-only via kernel-enforced chattr. An attacker who owns the guest cannot reach or alter the host-side record.</p>
+    </div>
+    <div class="feature-card">
+      <h3><span class="feature-dot"></span>Recovery — minutes, not days</h3>
+      <p>KVM snapshot rollback restores a compromised guest to a known-good state in minutes. No field service visit. No vendor re-imaging. No extended downtime.</p>
+    </div>
+    <div class="feature-card">
+      <h3><span class="feature-dot"></span>Protocol inspection</h3>
+      <p>HL7 proxy enforces message-type whitelist (ORU^R01, ADT^A01, etc). DICOM proxy enforces SOP class and AE Title. Worm payloads cannot tunnel through permitted clinical protocol ports.</p>
+    </div>
+    <div class="feature-card">
+      <h3><span class="feature-dot"></span>TPM attestation</h3>
+      <p>TPM PCR measurements verify guest boot integrity on every attestation cycle. Boot-level tampering is detectable even if the OS appears to be running normally.</p>
+    </div>
+    <div class="feature-card">
+      <h3><span class="feature-dot"></span>Multi-OS agent support</h3>
+      <p>In-guest telemetry agents for Linux, Windows (PE32+ XP compatible), QNX, and VxWorks. Agentless deployment also supported for devices where no software installation is permitted.</p>
+    </div>
+    <div class="feature-card">
+      <h3><span class="feature-dot"></span>SIEM integration — Phase 4</h3>
+      <p>Pluggable profile model forwards validated, SHA-256 chained audit entries to your existing SIEM in real time. Chain is verified on-host before forwarding — the SIEM receives only clean, attributable events.</p>
+      <div class="siem-platforms">
+        <span class="siem-tag">Splunk HEC</span>
+        <span class="siem-tag">Elastic / ECS</span>
+        <span class="siem-tag">Wazuh</span>
+        <span class="siem-tag">Microsoft Sentinel</span>
+        <span class="siem-tag">IBM QRadar</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="security-section">
+  <div class="security-section-inner" id="security">
+    <div class="section-eyebrow">Security posture</div>
+    <h2>Tested, documented, verifiable</h2>
+    <p class="section-intro">Every security claim is backed by empirical testing. All commits are GPG signed. The SBOM, CVE scan, OWASP report, pentest findings, and MITRE ATT&CK threat model are committed to the public repository.</p>
+    <div class="badges">
+      <span class="badge">OWASP Top 10 — all categories</span>
+      <span class="badge">0 CVEs — Grype scan clean</span>
+      <span class="badge">MITRE ATT&CK modeled</span>
+      <span class="badge">GPG signed commits</span>
+      <span class="badge">SBOM — SPDX format</span>
+      <span class="badge">CIS Ubuntu Level 2 hardening</span>
+    </div>
+    <div class="security-grid">
+      <div class="security-item">
+        <a href="https://github.com/B33rmamba1/carefortress-hv/blob/main/docs/SECURITY_TESTING.md">docs/SECURITY_TESTING.md →</a>
+        <p>Full OWASP Top 10 (2021) test results from an external Kali VM. A01–A10 documented with evidence, remediation applied, and post-fix verification confirmed.</p>
+      </div>
+      <div class="security-item">
+        <a href="https://github.com/B33rmamba1/carefortress-hv/blob/main/docs/PENTEST_REPORT.md">docs/PENTEST_REPORT.md →</a>
+        <p>Penetration test covering JWT attacks, SSH hardening, business logic, race conditions, and infrastructure. 3 findings fixed, 2 accepted with documented rationale.</p>
+      </div>
+      <div class="security-item">
+        <a href="https://github.com/B33rmamba1/carefortress-hv/blob/main/docs/APT_THREAT_MODEL.md">docs/APT_THREAT_MODEL.md →</a>
+        <p>MITRE ATT&CK kill-chain analysis for ransomware (TA-1) and nation-state APT (TA-2). Three empirical validation tests with results. Residual risk register included.</p>
+      </div>
+      <div class="security-item">
+        <a href="https://github.com/B33rmamba1/carefortress-hv/blob/main/docs/HOST_HARDENING.md">docs/HOST_HARDENING.md →</a>
+        <p>CIS Ubuntu 26.04 Level 2 hardening profile. Kernel sysctl settings, SUID reduction, service allowlist, AppArmor confinement, and file integrity baseline.</p>
+      </div>
+      <div class="security-item">
+        <a href="https://github.com/B33rmamba1/carefortress-hv/blob/main/docs/sbom-python.spdx.json">docs/sbom-python.spdx.json →</a>
+        <p>Software Bill of Materials generated by Syft 1.45.1. Grype CVE scan clean across all 16 Python dependencies after cryptography upgrade to 49.0.0.</p>
+      </div>
+      <div class="security-item">
+        <a href="https://github.com/B33rmamba1/carefortress-hv/blob/main/docs/PHASE4_SIEM.md">docs/PHASE4_SIEM.md →</a>
+        <p>Phase 4 SIEM integration specification. Pluggable profile architecture, five platform adapters, integrity model, and disk impact analysis.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section id="get-started">
+  <div class="section-eyebrow">Get started</div>
+  <h2>Evaluate CareFortress</h2>
+  <p class="section-intro">CareFortress is open source under the MIT license. Clone the repository, review the security documentation, and run the validation suite against your own environment.</p>
+  <div class="steps">
+    <div class="step">
+      <span class="step-num">01</span>
+      <div class="step-content">
+        <h3>Clone the repository</h3>
+        <p>The full source, documentation, and security testing reports are in a single repository.</p>
+        <div class="code-block">
+          <span class="comment"># Clone CareFortress</span><br>
+          <span class="cmd">git clone</span> <span class="arg">https://github.com/B33rmamba1/carefortress-hv</span><br>
+          <span class="cmd">cd</span> <span class="arg">carefortress-hv</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <span class="step-num">02</span>
+      <div class="step-content">
+        <h3>Review the security documentation</h3>
+        <p>Start with <code>docs/APT_THREAT_MODEL.md</code> for the architecture threat analysis, then <code>docs/SECURITY_TESTING.md</code> for empirical test results.</p>
+      </div>
+    </div>
+    <div class="step">
+      <span class="step-num">03</span>
+      <div class="step-content">
+        <h3>Run the validation suite</h3>
+        <p>Run <code>scripts/validate-chain.py</code> to verify audit chain integrity. The SBOM and CVE scan are pre-generated in <code>docs/</code>.</p>
+      </div>
+    </div>
+    <div class="step">
+      <span class="step-num">04</span>
+      <div class="step-content">
+        <h3>OEM and research inquiries</h3>
+        <p>For OEM integration, research collaboration, or hospital deployment discussions, reach out via <a href="https://linkedin.com/in/smithjamesd89" style="color:var(--teal-lt);">LinkedIn</a> or open an issue on GitHub.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-brand">
+    <h3><span>CARE</span>FORTRESS</h3>
+    <p>Open-source KVM hypervisor security layer for legacy medical devices. MIT licensed. All commits GPG signed and verifiable.</p>
+  </div>
+  <div class="footer-links">
+    <div class="footer-col">
+      <h4>Project</h4>
+      <ul>
+        <li><a href="https://github.com/B33rmamba1/carefortress-hv">GitHub repository</a></li>
+        <li><a href="https://github.com/B33rmamba1/carefortress-hv/blob/main/docs/APT_THREAT_MODEL.md">Threat model</a></li>
+        <li><a href="https://github.com/B33rmamba1/carefortress-hv/blob/main/docs/SECURITY_TESTING.md">Security testing</a></li>
+        <li><a href="https://github.com/B33rmamba1/carefortress-hv/blob/main/docs/PHASE4_SIEM.md">SIEM integration spec</a></li>
+        <li><a href="https://github.com/B33rmamba1/carefortress-hv/blob/main/LICENSE">MIT license</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Author</h4>
+      <ul>
+        <li><a href="https://linkedin.com/in/smithjamesd89">LinkedIn</a></li>
+        <li><a href="https://github.com/B33rmamba1">GitHub</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+<div class="footer-bottom">
+  <p>© 2026 James Smith — carefortress.dev — MIT License</p>
+  <p>GPG 0F882789E2917D31199070ED192C47200722413B</p>
+</div>
+
+</body>
+</html>
