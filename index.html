@@ -30,7 +30,7 @@
   .hero-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;color:var(--teal);text-transform:uppercase;margin-bottom:32px;display:flex;align-items:center;gap:12px;}
   .hero-eyebrow::before,.hero-eyebrow::after{content:'';display:block;width:40px;height:1px;background:var(--teal);opacity:0.5;}
   .hero-logo{margin-bottom:44px;}
-  .hero-logo img{height:110px;width:auto;}
+  .hero-logo img{height:200px;width:auto;}
   .hero-logo-fallback{display:flex;align-items:center;justify-content:center;gap:24px;}
   h1{font-size:clamp(36px,5vw,64px);font-weight:800;line-height:1.1;letter-spacing:-0.02em;margin-bottom:8px;color:var(--fg);}
   h1 .teal{color:var(--teal);}
@@ -116,8 +116,8 @@
 
 <nav>
   <a href="#" class="nav-logo">
-    <img src="assets/logo.png" alt="CareFortress"
-         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <img src="assets/logo.png" alt="CareFortress" style="height:36px;width:auto;">
+    <span style="font-size:15px;font-weight:700;color:#E8F4F7;letter-spacing:0.02em;margin-left:10px;"><span style="color:#1A7A8A;">CARE</span>FORTRESS</span>
     <div class="nav-fallback" style="display:none;">
       <svg width="28" height="32" viewBox="0 0 48 52" fill="none">
         <path d="M24 2L44 10V28C44 40 34 48 24 50C14 48 4 40 4 28V10L24 2Z" fill="#0D3340"/>
